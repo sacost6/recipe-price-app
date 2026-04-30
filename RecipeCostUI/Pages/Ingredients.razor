@@ -35,38 +35,49 @@
     </div>
 </div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Cost/Unit</th>
-            <th>User Unit</th>
-            <th>Cost/Base Unit</th>
-            <th>Base Unit</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in ingredientList)
-        {
-            <tr>
-                <td>@item.Name</td>
-                <td>@($"${item.CostPerUserUnit:0.00##}")</td>
-                <td>@item.UserUnit</td>
-                <td>@($"${item.CostPerBaseUnit:0.00##}")</td>
-                <td>@item.BaseUnit</td> 
-                <td>
-                    <button class="btn btn-warning btn-sm me-2" @onclick="() => StartEdit(item)">
-                        Edit
-                    </button>
-                    <button class="btn btn-danger btn-sm" @onclick="() => HandleDelete(item.Id)">
-                        Delete
-                    </button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<MudDataGrid T="IngredientDto"
+             Items="@ingredientList"
+             Dense="true"
+             Hover="true"
+             Striped="true"
+             Bordered="true"
+             Filterable="true"
+             SortMode="SortMode.Multiple">
+    <Columns>
+        <PropertyColumn Property="ingredient => ingredient.Name" Title="Name" />
+        <TemplateColumn Title="Cost/Unit">
+            <CellTemplate>
+                @FormatCurrency(context.Item.CostPerUserUnit)
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="ingredient => ingredient.UserUnit" Title="User Unit" />
+        <TemplateColumn Title="Cost/Base Unit">
+            <CellTemplate>
+                @FormatCurrency(context.Item.CostPerBaseUnit)
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="ingredient => ingredient.BaseUnit" Title="Base Unit" />
+        <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+            <CellTemplate>
+                <MudTooltip Text="Edit">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Color="Color.Warning"
+                                   Size="Size.Small"
+                                   OnClick="@(() => StartEdit(context.Item))" />
+                </MudTooltip>
+                <MudTooltip Text="Delete">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   OnClick="@(() => HandleDelete(context.Item.Id))" />
+                </MudTooltip>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="IngredientDto" />
+    </PagerContent>
+</MudDataGrid>
 
 @code {
     private List<IngredientDto> ingredientList = new();
@@ -74,6 +85,8 @@
     // The form now binds to this mutable object
     private IngredientFormModel formModel = new(); 
     private bool isEditing = false;
+
+    private static string FormatCurrency(decimal value) => $"${value:0.00##}";
 
     protected override async Task OnInitializedAsync()
     {
