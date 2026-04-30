@@ -1,0 +1,155 @@
+﻿@page "/ingredients"
+@using RecipeCost.Shared
+@inject IngredientService IngredientService
+
+<h3>Ingredient Manager</h3>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>@(isEditing ? $"Editing {formModel.Name}" : "Add New Ingredient")</h5>
+        <EditForm Model="formModel" OnValidSubmit="HandleSave">
+            <div class="row">
+                <div class="col"> 
+                    <input @bind="formModel.Name" class="form-control" placeholder="Name" />
+                </div> 
+                <div class="col">
+                    <input @bind="formModel.CostPerUserUnit" type="number" step="0.0001" class="form-control" placeholder="Cost ($)" />
+                </div> 
+                <div class="col"> 
+                    <InputSelect @bind-Value="formModel.UserUnit" class="form-control">
+                        @foreach (var unit in Enum.GetValues<UnitType>())
+                        {
+                            <option value="@unit">@unit</option>
+                        } 
+                    </InputSelect>
+                </div> 
+                <div class="col">
+                    <button type="submit" class="btn btn-primary">@(isEditing ? "Update" : "Save")</button>
+                    @if (isEditing)
+                    {
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                    }
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Cost/Unit</th>
+            <th>User Unit</th>
+            <th>Cost/Base Unit</th>
+            <th>Base Unit</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ingredientList)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@($"${item.CostPerUserUnit:0.00##}")</td>
+                <td>@item.UserUnit</td>
+                <td>@($"${item.CostPerBaseUnit:0.00##}")</td>
+                <td>@item.BaseUnit</td> 
+                <td>
+                    <button class="btn btn-warning btn-sm me-2" @onclick="() => StartEdit(item)">
+                        Edit
+                    </button>
+                    <button class="btn btn-danger btn-sm" @onclick="() => HandleDelete(item.Id)">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<IngredientDto> ingredientList = new();
+    
+    // The form now binds to this mutable object
+    private IngredientFormModel formModel = new(); 
+    private bool isEditing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ingredientList = await IngredientService.GetIngredientsAsync();
+    }
+
+    private void StartEdit(IngredientDto item)
+    {
+        // Load the form from the DTO
+        formModel = IngredientFormModel.FromDto(item);
+        isEditing = true;
+    }
+
+    private async Task HandleSave()
+    {
+        // Convert the mutable form back into an immutable DTO for the API
+        var dtoToSave = formModel.ToDto();
+
+        if (isEditing)
+        {
+            await IngredientService.UpdateIngredientAsync(dtoToSave);
+            isEditing = false;
+        }
+        else
+        {
+            await IngredientService.CreateIngredientAsync(dtoToSave);
+        }
+
+        ingredientList = await IngredientService.GetIngredientsAsync(); 
+        CancelEdit(); // Ensure we exit edit mode
+    }
+
+    private void CancelEdit()
+    {
+        formModel = new(); // Clears the input fields
+        isEditing = false; // Reverts UI from "Update" to "Save" mode
+    }
+
+    private async Task HandleDelete(int id)
+    {
+        // If the user is currently editing the item they are about to delete,
+        // we should cancel the edit to prevent them from trying to 'Update' a ghost.
+        if (isEditing && formModel.Id == id)
+        {
+            CancelEdit();
+        }
+
+        await IngredientService.DeleteIngredientAsync(id);
+
+        // Refresh the list from the database
+        ingredientList = await IngredientService.GetIngredientsAsync();
+    }
+
+    // This is our mutable "Work Area" for the form
+    public class IngredientFormModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty; 
+        public decimal CostPerUserUnit { get; set; }  
+        public UnitType UserUnit { get; set; }  
+        // Helper to turn the form data back into an Immutable DTO
+        public IngredientDto ToDto() => new IngredientDto
+        {
+            Id = this.Id,
+            Name = this.Name, 
+            UserUnit = this.UserUnit,
+            CostPerUserUnit = this.CostPerUserUnit
+        };
+
+        // Helper to fill the form from an existing DTO
+        public static IngredientFormModel FromDto(IngredientDto dto) => new()
+        {
+            Id = dto.Id,
+            Name = dto.Name, 
+            CostPerUserUnit = dto.CostPerUserUnit,
+            UserUnit = dto.UserUnit
+        };
+    }
+}

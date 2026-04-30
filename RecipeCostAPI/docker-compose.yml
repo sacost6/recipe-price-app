@@ -1,0 +1,48 @@
+services:
+  # 1. The Database (PostgreSQL)
+  postgresdata:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=YourStrong!Passw0rd123
+      - POSTGRES_DB=RecipeDb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d RecipeDb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 2. The Caching Layer (Redis)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 3. Your .NET Core Web API
+  api:
+    build: 
+      context: ..
+      dockerfile: RecipeCostAPI/Dockerfile
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgresdata:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # This is the standard PostgreSQL connection string format
+      - ConnectionStrings__DefaultConnection=Host=postgresdata;Database=RecipeDb;Username=postgres;Password=YourStrong!Passw0rd123;
+
+volumes:
+  pgdata: # This ensures your database isn't wiped clean every time you stop Docker
