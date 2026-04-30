@@ -1,8 +1,11 @@
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using RecipeCostAPI.Data;
 using RecipeCostAPI.Middleware;
 using RecipeCostAPI.Services;
 using RecipeCostAPI.Services.Interfaces;
+using RecipeCostAPI.Validation;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +30,8 @@ builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<IIngredientService, IngredientService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.AddValidatorsFromAssemblyContaining<IngredientDtoValidator>();
+builder.Services.AddFluentValidationAutoValidation();
 
 // Get connection string
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

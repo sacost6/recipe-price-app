@@ -97,6 +97,57 @@ public sealed class IngredientPostgresIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PostIngredient_WithInvalidDto_ReturnsValidationProblem()
+    {
+        var request = new IngredientDto
+        {
+            Name = "",
+            UserUnit = UnitType.Gram,
+            BaseUnit = UnitType.Gram,
+            CostPerUserUnit = 0m,
+            CostPerBaseUnit = -1m,
+            DensityGramsPerMl = -0.5m,
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/ingredients", request, JsonOptions);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Name", body);
+        Assert.Contains("CostPerUserUnit", body);
+        Assert.Contains("CostPerBaseUnit", body);
+        Assert.Contains("DensityGramsPerMl", body);
+    }
+
+    [Fact]
+    public async Task PostRecipe_WithInvalidNestedDto_ReturnsValidationProblem()
+    {
+        var request = new RecipeDto
+        {
+            Name = "",
+            Servings = 0,
+            Ingredients =
+            [
+                new RecipeIngredientDto
+                {
+                    IngredientId = 0,
+                    Quantity = 0m,
+                    BaseUnit = UnitType.Gram,
+                },
+            ],
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/recipes", request, JsonOptions);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Name", body);
+        Assert.Contains("Servings", body);
+        Assert.Contains("Ingredients[0].IngredientId", body);
+        Assert.Contains("Ingredients[0].Quantity", body);
+    }
+
+    [Fact]
     public async Task DeleteRecipe_WithExistingRecipe_RemovesRecipeFromPostgres()
     {
         int recipeId;
