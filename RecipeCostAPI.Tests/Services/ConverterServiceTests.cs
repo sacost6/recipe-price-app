@@ -121,6 +121,14 @@ public class ConverterServiceTests
         AssertApproximatelyEqual(expected, result, 0.000001m);
     }
 
+    [Fact]
+    public void Convert_OneCupToGrams_WithDensityOfOnePointTwoGramsPerMilliliter_ReturnsExpectedGramWeight()
+    {
+        var result = _sut.Convert(1m, UnitType.Cup, UnitType.Gram, 1.2m);
+
+        AssertApproximatelyEqual(283.9058838m, result, 0.000001m);
+    }
+
     [Theory]
     [InlineData(UnitType.Piece, UnitType.Gram)]
     [InlineData(UnitType.Clove, UnitType.Liter)]
