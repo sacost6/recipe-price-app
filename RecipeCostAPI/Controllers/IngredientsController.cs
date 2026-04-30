@@ -12,6 +12,9 @@ namespace RecipeCostAPI.Controllers;
 [Route("api/[controller]")]
 public class IngredientsController : ControllerBase
 {
+    private const int DefaultPageNumber = 1;
+    private const int DefaultPageSize = 50;
+
     private readonly IIngredientService _ingredientService; 
 
     public IngredientsController(IIngredientService ingredientService)
@@ -21,9 +24,14 @@ public class IngredientsController : ControllerBase
 
     // GET: api/ingredients
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<IngredientDto>>> GetIngredients()
+    public async Task<ActionResult<IEnumerable<IngredientDto>>> GetIngredients(
+        [FromQuery] int pageNumber = DefaultPageNumber,
+        [FromQuery] int pageSize = DefaultPageSize)
     {
-        var ingredients = await _ingredientService.GetIngredientsAsync();
+        if (pageNumber < 1) return BadRequest("pageNumber must be greater than zero.");
+        if (pageSize < 1) return BadRequest("pageSize must be greater than zero.");
+
+        var ingredients = await _ingredientService.GetIngredientsAsync(pageNumber, pageSize);
         return Ok(ingredients);
 
     }

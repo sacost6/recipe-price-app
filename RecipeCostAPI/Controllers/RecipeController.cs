@@ -9,6 +9,9 @@ namespace RecipeCostAPI.Controllers;
 [Route("api/[controller]")]
 public class RecipesController : ControllerBase
 {
+    private const int DefaultPageNumber = 1;
+    private const int DefaultPageSize = 50;
+
     private readonly IRecipeService _recipeService;
     private readonly AppDbContext _context;
 
@@ -20,9 +23,14 @@ public class RecipesController : ControllerBase
 
     // GET: api/recipes
     [HttpGet]
-    public async Task<IActionResult> GetRecipes()
+    public async Task<IActionResult> GetRecipes(
+        [FromQuery] int pageNumber = DefaultPageNumber,
+        [FromQuery] int pageSize = DefaultPageSize)
     {
-        var recipe = await _recipeService.GetRecipesAsync();
+        if (pageNumber < 1) return BadRequest("pageNumber must be greater than zero.");
+        if (pageSize < 1) return BadRequest("pageSize must be greater than zero.");
+
+        var recipe = await _recipeService.GetRecipesAsync(pageNumber, pageSize);
         return Ok(recipe);
     }
 

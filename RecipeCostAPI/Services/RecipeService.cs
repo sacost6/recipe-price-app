@@ -17,9 +17,13 @@ namespace RecipeCostAPI.Services
             _pricingService = pricingService;
         }
 
-        public async Task<IEnumerable<RecipeDto>> GetRecipesAsync()
+        public async Task<IEnumerable<RecipeDto>> GetRecipesAsync(int pageNumber, int pageSize)
         {
             var recipes = await _context.Recipes
+                .AsNoTracking()
+                .OrderBy(r => r.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .Include(r => r.RecipeIngredients) // Eager load RecipeIngredients
                     .ThenInclude(ri => ri.Ingredient) // Eager load the related Ingredient for each RecipeIngredient
                 .ToListAsync();

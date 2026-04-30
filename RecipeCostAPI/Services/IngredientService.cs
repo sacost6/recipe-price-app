@@ -18,9 +18,15 @@ namespace RecipeCostAPI.Services
             _converterService = converterService;
         }
 
-        public async Task<IEnumerable<IngredientDto>> GetIngredientsAsync()
+        public async Task<IEnumerable<IngredientDto>> GetIngredientsAsync(int pageNumber, int pageSize)
         {
-            var ingredients = await _context.Ingredients.ToListAsync();
+            var ingredients = await _context.Ingredients
+                .AsNoTracking()
+                .OrderBy(i => i.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
             return ingredients.Select(i => i.ToDto());
         }
 

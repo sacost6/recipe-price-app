@@ -52,7 +52,7 @@ public sealed class ExceptionHandlingIntegrationTests
 
     private sealed class ThrowingRecipeService : IRecipeService
     {
-        public Task<IEnumerable<RecipeDto>> GetRecipesAsync()
+        public Task<IEnumerable<RecipeDto>> GetRecipesAsync(int pageNumber, int pageSize)
         {
             throw new InvalidOperationException("simulated production failure with sensitive implementation details");
         }

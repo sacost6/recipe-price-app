@@ -125,4 +125,61 @@ public sealed class IngredientPostgresIntegrationTests : IAsyncLifetime
 
         Assert.Null(deleted);
     }
+
+    [Fact]
+    public async Task GetIngredients_WithPagination_ReturnsOnlyRequestedPage()
+    {
+        var response = await _client.GetAsync("/api/ingredients?pageNumber=2&pageSize=2");
+
+        response.EnsureSuccessStatusCode();
+        var ingredients = await response.Content.ReadFromJsonAsync<List<IngredientDto>>(JsonOptions);
+
+        Assert.NotNull(ingredients);
+        Assert.Single(ingredients);
+    }
+
+    [Fact]
+    public async Task GetRecipes_WithPagination_ReturnsOnlyRequestedPage()
+    {
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            context.Recipes.AddRange(
+                new Recipe
+                {
+                    Name = $"Paged Recipe A {Guid.NewGuid():N}",
+                    Description = "First pagination test recipe.",
+                    Servings = 2,
+                },
+                new Recipe
+                {
+                    Name = $"Paged Recipe B {Guid.NewGuid():N}",
+                    Description = "Second pagination test recipe.",
+                    Servings = 4,
+                });
+
+            await context.SaveChangesAsync();
+        }
+
+        var response = await _client.GetAsync("/api/recipes?pageNumber=2&pageSize=2");
+
+        response.EnsureSuccessStatusCode();
+        var recipes = await response.Content.ReadFromJsonAsync<List<RecipeDto>>(JsonOptions);
+
+        Assert.NotNull(recipes);
+        Assert.Single(recipes);
+    }
+
+    [Theory]
+    [InlineData("/api/ingredients?pageNumber=0&pageSize=2")]
+    [InlineData("/api/ingredients?pageNumber=1&pageSize=0")]
+    [InlineData("/api/recipes?pageNumber=0&pageSize=2")]
+    [InlineData("/api/recipes?pageNumber=1&pageSize=0")]
+    public async Task GetCollection_WithInvalidPagination_ReturnsBadRequest(string url)
+    {
+        var response = await _client.GetAsync(url);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }
