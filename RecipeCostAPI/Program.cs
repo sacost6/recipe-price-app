@@ -6,9 +6,19 @@ using RecipeCostAPI.Middleware;
 using RecipeCostAPI.Services;
 using RecipeCostAPI.Services.Interfaces;
 using RecipeCostAPI.Validation;
+using Serilog;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .WriteTo.Console();
+});
 
 // Add Controller Support
 builder.Services.AddControllers()
@@ -97,6 +107,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
 
 // IMPORTANT: app.UseCors must go here!

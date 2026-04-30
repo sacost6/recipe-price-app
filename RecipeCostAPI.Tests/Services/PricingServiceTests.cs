@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Moq;
 using RecipeCost.Shared;
 using RecipeCostAPI.Models;
@@ -60,6 +61,33 @@ namespace RecipeCostAPI.Tests.Services
 
             Assert.Equal(70.976470950m, result);
             converterService.VerifyAll();
+        }
+
+        [Fact]
+        public void CalculateLineItemCost_WhenSuccessful_LogsStructuredIngredientContext()
+        {
+            var converterService = new Mock<IConverterService>(MockBehavior.Strict);
+            var logger = new Mock<ILogger<PricingService>>();
+            var pricingService = new PricingService(converterService.Object, logger.Object);
+            var ingredient = CreateIngredient(UnitType.Gram, 0.25m, id: 42);
+
+            converterService
+                .Setup(service => service.Convert(10m, UnitType.Gram, UnitType.Gram, null))
+                .Returns(10m);
+
+            var result = pricingService.CalculateLineItemCost(10m, UnitType.Gram, ingredient);
+
+            Assert.Equal(2.50m, result);
+            logger.Verify(
+                log => log.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((state, _) =>
+                        HasLogProperty(state, "IngredientId", 42) &&
+                        HasLogProperty(state, "LineItemCost", 2.50m)),
+                    It.IsAny<Exception?>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
         }
 
         [Fact]
@@ -157,6 +185,42 @@ namespace RecipeCostAPI.Tests.Services
         }
 
         [Fact]
+        public void CalculateRecipeCost_WhenSuccessful_LogsStructuredRecipeContext()
+        {
+            var converterService = new Mock<IConverterService>(MockBehavior.Strict);
+            var logger = new Mock<ILogger<PricingService>>();
+            var pricingService = new PricingService(converterService.Object, logger.Object);
+            var flour = CreateIngredient(UnitType.Gram, 0.004m, id: 9);
+            var recipe = new Recipe
+            {
+                Id = 12,
+                Name = "Logged Recipe",
+                RecipeIngredients = new List<RecipeIngredient>
+                {
+                    CreateRecipeIngredient(250m, UnitType.Gram, flour),
+                },
+            };
+
+            converterService
+                .Setup(service => service.Convert(250m, UnitType.Gram, UnitType.Gram, null))
+                .Returns(250m);
+
+            var result = pricingService.CalculateRecipeCost(recipe);
+
+            Assert.Equal(1.000m, result);
+            logger.Verify(
+                log => log.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((state, _) =>
+                        HasLogProperty(state, "RecipeId", 12) &&
+                        HasLogProperty(state, "TotalCost", 1.000m)),
+                    It.IsAny<Exception?>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
         public void CalculateRecipeCost_WhenOneLineItemCannotConvert_ExcludesThatLineItemFromTotal()
         {
             var converterService = new Mock<IConverterService>(MockBehavior.Strict);
@@ -233,10 +297,12 @@ namespace RecipeCostAPI.Tests.Services
         private static Ingredient CreateIngredient(
             UnitType baseUnit,
             decimal costPerBaseUnit,
-            decimal? densityGramsPerMl = null)
+            decimal? densityGramsPerMl = null,
+            int id = 0)
         {
             return new Ingredient
             {
+                Id = id,
                 Name = "Test Ingredient",
                 BaseUnit = baseUnit,
                 CostPerBaseUnit = costPerBaseUnit,
@@ -252,6 +318,18 @@ namespace RecipeCostAPI.Tests.Services
                 Unit = unit,
                 Ingredient = ingredient,
             };
+        }
+
+        private static bool HasLogProperty(object state, string propertyName, object expectedValue)
+        {
+            if (state is not IEnumerable<KeyValuePair<string, object?>> properties)
+            {
+                return false;
+            }
+
+            return properties.Any(property =>
+                property.Key == propertyName &&
+                Equals(property.Value, expectedValue));
         }
 
         private static void AssertApproximatelyEqual(decimal expected, decimal actual, decimal tolerance)
