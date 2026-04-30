@@ -1,9 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RecipeCost.Shared;
 using RecipeCostAPI.Data;
-using RecipeCostAPI.Mappers;
-using RecipeCostAPI.Services;
 using RecipeCostAPI.Services.Interfaces;
 
 namespace RecipeCostAPI.Controllers;
@@ -13,10 +10,12 @@ namespace RecipeCostAPI.Controllers;
 public class RecipesController : ControllerBase
 {
     private readonly IRecipeService _recipeService;
+    private readonly AppDbContext _context;
 
-    public RecipesController(IRecipeService recipeService)
+    public RecipesController(IRecipeService recipeService, AppDbContext context)
     {
         _recipeService = recipeService;
+        _context = context;
     }
 
     // GET: api/recipes
@@ -45,20 +44,26 @@ public class RecipesController : ControllerBase
     }
     // PUT: api/recipes/1
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateIngredient(int id, RecipeDto dto)
+    public async Task<IActionResult> UpdateRecipe(int id, RecipeDto dto)
     {
         if (id != dto.Id) return BadRequest();
 
         var updated = await _recipeService.UpdateRecipeAsync(id, dto);
+        if (!updated) return NotFound();
 
 
         return NoContent();
     }
     // DELETE: api/recipes/1
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteIngredient(int id)
+    public async Task<IActionResult> DeleteRecipe(int id)
     {
-        // Implement delete logic if needed
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound();
+
+        _context.Recipes.Remove(recipe);
+        await _context.SaveChangesAsync();
+
         return NoContent();
     }
 }

@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RecipeCost.Shared;
 using RecipeCostAPI.Data;
+using RecipeCostAPI.Models;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -93,5 +94,35 @@ public sealed class IngredientPostgresIntegrationTests : IAsyncLifetime
         Assert.Equal(costPerUserUnit, stored.CostPerUserUnit);
         Assert.Equal(expectedBaseUnit, stored.BaseUnit);
         Assert.Equal(expectedCostPerBaseUnit, stored.CostPerBaseUnit);
+    }
+
+    [Fact]
+    public async Task DeleteRecipe_WithExistingRecipe_RemovesRecipeFromPostgres()
+    {
+        int recipeId;
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var recipe = new Recipe
+            {
+                Name = $"Recipe delete integration {Guid.NewGuid():N}",
+                Description = "Created for delete endpoint integration coverage.",
+                Servings = 4,
+            };
+
+            context.Recipes.Add(recipe);
+            await context.SaveChangesAsync();
+            recipeId = recipe.Id;
+        }
+
+        var response = await _client.DeleteAsync($"/api/recipes/{recipeId}");
+
+        response.EnsureSuccessStatusCode();
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var deleted = await verifyContext.Recipes.FindAsync(recipeId);
+
+        Assert.Null(deleted);
     }
 }
