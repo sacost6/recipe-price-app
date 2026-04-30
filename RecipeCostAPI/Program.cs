@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RecipeCostAPI.Data;
+using RecipeCostAPI.Middleware;
 using RecipeCostAPI.Services;
 using RecipeCostAPI.Services.Interfaces;
 using System.Text.Json.Serialization;
@@ -24,6 +25,8 @@ builder.Services.AddScoped<IConverterService, ConverterService>();
 builder.Services.AddScoped<IPricingService, PricingService>();
 builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<IIngredientService, IngredientService>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // Get connection string
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -88,6 +91,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 
 // IMPORTANT: app.UseCors must go here!
