@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using MudBlazor.Services;
 using RecipeCost.Shared; // This allows the UI to use your shared models
 using RecipeCostUI;
 using System.Text.Json;
@@ -24,5 +25,6 @@ builder.Services.AddSingleton(jsonOptions);
 
 // This registers your service so pages can use it
 builder.Services.AddScoped<IngredientService>();
+builder.Services.AddMudServices();
 
 await builder.Build().RunAsync();
