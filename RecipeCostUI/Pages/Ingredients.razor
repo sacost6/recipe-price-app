@@ -1,6 +1,7 @@
 ﻿@page "/ingredients"
 @using RecipeCost.Shared
 @inject IngredientService IngredientService
+@inject ISnackbar Snackbar
 
 <h3>Ingredient Manager</h3>
 
@@ -90,7 +91,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ingredientList = await IngredientService.GetIngredientsAsync();
+        await LoadIngredients();
+    }
+
+    private async Task LoadIngredients()
+    {
+        try
+        {
+            ingredientList = await IngredientService.GetIngredientsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load ingredients: {ex.Message}", Severity.Error);
+        }
     }
 
     private void StartEdit(IngredientDto item)
@@ -102,21 +115,29 @@
 
     private async Task HandleSave()
     {
-        // Convert the mutable form back into an immutable DTO for the API
-        var dtoToSave = formModel.ToDto();
-
-        if (isEditing)
+        try
         {
-            await IngredientService.UpdateIngredientAsync(dtoToSave);
-            isEditing = false;
-        }
-        else
-        {
-            await IngredientService.CreateIngredientAsync(dtoToSave);
-        }
+            // Convert the mutable form back into an immutable DTO for the API
+            var dtoToSave = formModel.ToDto();
 
-        ingredientList = await IngredientService.GetIngredientsAsync(); 
-        CancelEdit(); // Ensure we exit edit mode
+            if (isEditing)
+            {
+                await IngredientService.UpdateIngredientAsync(dtoToSave);
+                Snackbar.Add("Ingredient updated successfully.", Severity.Success);
+            }
+            else
+            {
+                await IngredientService.CreateIngredientAsync(dtoToSave);
+                Snackbar.Add("Ingredient saved successfully.", Severity.Success);
+            }
+
+            await LoadIngredients();
+            CancelEdit(); // Ensure we exit edit mode
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save ingredient: {ex.Message}", Severity.Error);
+        }
     }
 
     private void CancelEdit()
@@ -134,10 +155,16 @@
             CancelEdit();
         }
 
-        await IngredientService.DeleteIngredientAsync(id);
-
-        // Refresh the list from the database
-        ingredientList = await IngredientService.GetIngredientsAsync();
+        try
+        {
+            await IngredientService.DeleteIngredientAsync(id);
+            Snackbar.Add("Ingredient deleted successfully.", Severity.Success);
+            await LoadIngredients();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to delete ingredient: {ex.Message}", Severity.Error);
+        }
     }
 
     // This is our mutable "Work Area" for the form

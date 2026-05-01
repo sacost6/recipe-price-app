@@ -3,16 +3,9 @@
 @using System.Text.Json
 @inject HttpClient Http
 @inject JsonSerializerOptions JsonOptions
+@inject ISnackbar Snackbar
 
 <h3>Recipe Manager</h3>
-
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @errorMessage
-        <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
-    </div>
-}
 
 <div class="card mb-4">
     <div class="card-body">
@@ -127,7 +120,6 @@
     private decimal tempQuantity;
     private UnitType tempUnit = UnitType.Gram;
     private bool isEditing;
-    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,11 +132,10 @@
         {
             recipeList = await Http.GetFromJsonAsync<List<RecipeDto>>("api/recipes", JsonOptions) ?? new();
             availableIngredients = await Http.GetFromJsonAsync<List<IngredientDto>>("api/ingredients", JsonOptions) ?? new();
-            errorMessage = null;
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load data: {ex.Message}";
+            Snackbar.Add($"Failed to load recipe data: {ex.Message}", Severity.Error);
         }
     }
 
@@ -167,14 +158,35 @@
 
     private async Task HandleSave()
     {
-        if (isEditing)
-            await Http.PutAsJsonAsync($"api/recipes/{formModel.Id}", formModel.ToDto());
-        else
-            await Http.PostAsJsonAsync("api/recipes", formModel.ToDto());
+        try
+        {
+            HttpResponseMessage response;
 
-        formModel = new();
-        isEditing = false;
-        await LoadData();
+            if (isEditing)
+            {
+                response = await Http.PutAsJsonAsync($"api/recipes/{formModel.Id}", formModel.ToDto());
+            }
+            else
+            {
+                response = await Http.PostAsJsonAsync("api/recipes", formModel.ToDto());
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to save recipe: {error}", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add(isEditing ? "Recipe updated successfully." : "Recipe saved successfully.", Severity.Success);
+            formModel = new();
+            isEditing = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save recipe: {ex.Message}", Severity.Error);
+        }
     }
 
     private void StartEdit(RecipeDto dto)
