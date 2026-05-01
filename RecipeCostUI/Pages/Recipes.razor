@@ -1,6 +1,8 @@
 @page "/recipes"
 @using RecipeCost.Shared
 @using RecipeCostUI.Models
+@implements IDisposable
+@inject AppState AppState
 @inject RecipeService RecipeService
 @inject IngredientService IngredientService
 @inject ISnackbar Snackbar
@@ -23,20 +25,66 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
+        AppState.OnChange += HandleAppStateChanged;
+        await LoadDataFromStateOrApi();
     }
 
-    private async Task LoadData()
+    private async Task LoadDataFromStateOrApi()
+    {
+        if (AppState.HasRecipes && AppState.HasIngredients)
+        {
+            UseAppState();
+            return;
+        }
+
+        await HydrateData();
+    }
+
+    private async Task HydrateData()
     {
         try
         {
-            recipeList = await RecipeService.GetRecipesAsync();
-            availableIngredients = await IngredientService.GetIngredientsAsync();
+            var recipes = AppState.HasRecipes
+                ? AppState.Recipes
+                : await RecipeService.GetRecipesAsync();
+
+            var ingredients = AppState.HasIngredients
+                ? AppState.Ingredients
+                : await IngredientService.GetIngredientsAsync();
+
+            AppState.SetData(ingredients, recipes);
+            UseAppState();
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Failed to load recipe data: {ex.Message}", Severity.Error);
         }
+    }
+
+    private async Task HydrateRecipes()
+    {
+        try
+        {
+            var recipes = await RecipeService.GetRecipesAsync();
+            AppState.SetRecipes(recipes);
+            UseAppState();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load recipes: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void UseAppState()
+    {
+        recipeList = AppState.Recipes;
+        availableIngredients = AppState.Ingredients;
+    }
+
+    private void HandleAppStateChanged()
+    {
+        UseAppState();
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleSave()
@@ -55,7 +103,7 @@
             Snackbar.Add(isEditing ? "Recipe updated successfully." : "Recipe saved successfully.", Severity.Success);
             formModel = new();
             isEditing = false;
-            await LoadData();
+            await HydrateRecipes();
         }
         catch (Exception ex)
         {
@@ -86,5 +134,10 @@
     {
         formModel = new();
         isEditing = false;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleAppStateChanged;
     }
 }
