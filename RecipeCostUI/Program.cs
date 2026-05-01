@@ -22,6 +22,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://
 
 // Provide the JSON options as a singleton service so they can be injected where needed
 builder.Services.AddSingleton(jsonOptions);
+builder.Services.AddSingleton<AppState>();
 
 // This registers your service so pages can use it
 builder.Services.AddScoped<IngredientService>();
