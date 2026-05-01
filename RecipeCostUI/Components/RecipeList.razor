@@ -1,0 +1,30 @@
+@using RecipeCost.Shared
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Recipe Name</th>
+            <th>Total Cost</th>
+            <th>Cost/Serving</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var recipe in Recipes)
+        {
+            <tr>
+                <td>@recipe.Name</td>
+                <td>@($"${recipe.TotalCost:0.####}")</td>
+                <td>@($"${recipe.CostPerServing:0.#######}")</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-info" @onclick="() => EditRequested.InvokeAsync(recipe)">Edit</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter] public IReadOnlyList<RecipeDto> Recipes { get; set; } = Array.Empty<RecipeDto>();
+    [Parameter] public EventCallback<RecipeDto> EditRequested { get; set; }
+}

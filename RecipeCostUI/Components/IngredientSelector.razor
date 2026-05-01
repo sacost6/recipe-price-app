@@ -1,0 +1,61 @@
+@using RecipeCost.Shared
+@using RecipeCostUI.Models
+
+<div class="row align-items-end mb-3">
+    <div class="col-md-4">
+        <label>Select Ingredient</label>
+        <select class="form-control" @bind="selectedIngredientId">
+            <option value="0">-- Select --</option>
+            @foreach (var ingredient in Ingredients)
+            {
+                <option value="@ingredient.Id">@ingredient.Name (@ingredient.BaseUnit)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label>Quantity</label>
+        <input type="number" class="form-control" @bind="tempQuantity" />
+    </div>
+    <div class="col-md-2">
+        <label>Unit</label>
+        <select class="form-control" @bind="tempUnit">
+            @foreach (var unit in Enum.GetValues<UnitType>())
+            {
+                <option value="@unit">@unit</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="button" class="btn btn-outline-success" @onclick="AddIngredient">Add</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<IngredientDto> Ingredients { get; set; } = Array.Empty<IngredientDto>();
+    [Parameter] public EventCallback<RecipeIngredientFormModel> IngredientAdded { get; set; }
+
+    private int selectedIngredientId;
+    private decimal tempQuantity;
+    private UnitType tempUnit = UnitType.Gram;
+
+    private async Task AddIngredient()
+    {
+        var ingredient = Ingredients.FirstOrDefault(i => i.Id == selectedIngredientId);
+        if (ingredient is null || tempQuantity <= 0)
+        {
+            return;
+        }
+
+        await IngredientAdded.InvokeAsync(new RecipeIngredientFormModel
+        {
+            IngredientId = ingredient.Id,
+            IngredientName = ingredient.Name,
+            Quantity = tempQuantity,
+            Unit = tempUnit
+        });
+
+        selectedIngredientId = 0;
+        tempQuantity = 0;
+        tempUnit = UnitType.Gram;
+    }
+}

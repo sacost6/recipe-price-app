@@ -1,123 +1,24 @@
-﻿@page "/recipes"
+@page "/recipes"
 @using RecipeCost.Shared
+@using RecipeCostUI.Models
 @inject RecipeService RecipeService
 @inject IngredientService IngredientService
 @inject ISnackbar Snackbar
 
 <h3>Recipe Manager</h3>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <h5>@(isEditing ? $"Editing {formModel.Name}" : "Create New Recipe")</h5>
-        <EditForm Model="formModel" OnValidSubmit="HandleSave">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label>Recipe Name</label>
-                    <InputText @bind-Value="formModel.Name" class="form-control" />
-                </div>
-                <div class="col-md-2">
-                    <label>Servings</label>
-                    <InputNumber @bind-Value="formModel.Servings" class="form-control" />
-                </div>
-            </div>
+<RecipeForm Model="formModel"
+            AvailableIngredients="availableIngredients"
+            IsEditing="isEditing"
+            OnSave="HandleSave"
+            OnCancel="CancelEdit" />
 
-            <h6>Ingredients</h6>
-            <div class="row align-items-end mb-3">
-                <div class="col-md-4">
-                    <label>Select Ingredient</label>
-                    <select class="form-control" @bind="selectedIngredientId">
-                        <option value="0">-- Select --</option>
-                        @foreach (var ing in availableIngredients)
-                        {
-                            <option value="@ing.Id">@ing.Name (@ing.BaseUnit)</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label>Quantity</label>
-                    <input type="number" class="form-control" @bind="tempQuantity" />
-                </div>
-                <div class="col-md-2">
-                    <label>Unit</label>
-                    <select class="form-control" @bind="tempUnit">
-                        @foreach (var unit in Enum.GetValues<UnitType>())
-                        {
-                            <option value="@unit">@unit</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-outline-success" @onclick="AddIngredientToRecipe">Add</button>
-                </div>
-            </div>
-
-            <table class="table table-sm">
-                <thead>
-                    <tr>
-                        <th>Ingredient</th>
-                        <th>Qty</th>
-                        <th>Unit</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in formModel.Ingredients)
-                    {
-                        <tr>
-                            <td>@item.IngredientName</td>
-                            <td>@item.Quantity</td>
-                            <td>@item.Unit</td>
-                            <td>
-                                <button type="button" class="btn btn-link text-danger" @onclick="() => formModel.Ingredients.Remove(item)">Remove</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-
-            <div class="mt-3">
-                <button type="submit" class="btn btn-primary">Save Recipe</button>
-                @if (isEditing)
-                {
-                    <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
-                }
-            </div>
-        </EditForm>
-    </div>
-</div>
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Recipe Name</th>
-            <th>Total Cost</th>
-            <th>Cost/Serving</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var recipe in recipeList)
-        {
-            <tr>
-                <td>@recipe.Name</td>
-                <td>@($"${recipe.TotalCost:0.####}")</td>
-                <td>@($"${recipe.CostPerServing:0.#######}")</td>
-                <td>
-                    <button class="btn btn-sm btn-info" @onclick="() => StartEdit(recipe)">Edit</button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<RecipeList Recipes="recipeList" EditRequested="StartEdit" />
 
 @code {
     private List<RecipeDto> recipeList = new();
     private List<IngredientDto> availableIngredients = new();
     private RecipeFormModel formModel = new();
-
-    private int selectedIngredientId;
-    private decimal tempQuantity;
-    private UnitType tempUnit = UnitType.Gram;
     private bool isEditing;
 
     protected override async Task OnInitializedAsync()
@@ -135,23 +36,6 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Failed to load recipe data: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private void AddIngredientToRecipe()
-    {
-        var ing = availableIngredients.FirstOrDefault(i => i.Id == selectedIngredientId);
-        if (ing != null && tempQuantity > 0)
-        {
-            formModel.Ingredients.Add(new RecipeIngredientFormModel
-            {
-                IngredientId = ing.Id,
-                IngredientName = ing.Name,
-                Quantity = tempQuantity,
-                Unit = tempUnit
-            });
-            tempQuantity = 0;
-            tempUnit = UnitType.Gram;
         }
     }
 
@@ -198,41 +82,9 @@
         };
     }
 
-    private void CancelEdit() { formModel = new(); isEditing = false; }
-
-    public class RecipeFormModel
+    private void CancelEdit()
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public int Servings { get; set; } = 1;
-
-        // This is where we track ingredients being added to the recipe
-        public List<RecipeIngredientFormModel> Ingredients { get; set; } = new();
-
-        public RecipeDto ToDto() => new RecipeDto
-        {
-            Id = this.Id,
-            Name = this.Name,
-            Description = this.Description,
-            Servings = this.Servings,
-            Ingredients = this.Ingredients.Select(i => i.ToDto()).ToList()
-        };
-    }
-
-    public class RecipeIngredientFormModel
-    {
-        public int IngredientId { get; set; }
-        public string IngredientName { get; set; } = string.Empty;
-        public decimal Quantity { get; set; }
-        public UnitType Unit { get; set; } = UnitType.Gram;
-
-        public RecipeIngredientDto ToDto() => new RecipeIngredientDto
-        {
-            IngredientId = this.IngredientId,
-            IngredientName = this.IngredientName,
-            Quantity = this.Quantity,
-            BaseUnit = this.Unit
-        };
+        formModel = new();
+        isEditing = false;
     }
 }
