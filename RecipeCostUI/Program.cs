@@ -25,6 +25,7 @@ builder.Services.AddSingleton(jsonOptions);
 
 // This registers your service so pages can use it
 builder.Services.AddScoped<IngredientService>();
+builder.Services.AddScoped<RecipeService>();
 builder.Services.AddMudServices();
 
 await builder.Build().RunAsync();
